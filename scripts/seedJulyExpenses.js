@@ -1,4 +1,6 @@
-// Node script to parse July expense prompt list and generate JSON seed data
+// Node script to parse July expenses list and upload directly to Cloud Database & Local Storage
+
+const CLOUD_ENDPOINT = 'https://crudcrud.com/api/8c642e80b2bb4d5d81d9422d87c86686/expenses/6a7cda0e88d77103e82653fb';
 
 const rawInput = `
 1 july
@@ -150,7 +152,6 @@ snacks 376
 subway 390
 `;
 
-// Helper matching categories
 const CATEGORIES = [
   { id: 'transport', keywords: ['metro', 'rapido', 'train', 'bus', 'bike', 'auto', 'cab', 'uber', 'petrol', 'parking'] },
   { id: 'food', keywords: ['poha', 'burg', 'fruits', 'snacks', 'lassi', 'wrap', 'food', 'namkeen', 'rajma', 'mcd', 'dinner', 'sandwich', 'coffee', 'ice cream', 'pizza', 'patties', 'kulfa', 'bakery', 'subway', 'waffles', 'coke', 'pancake', 'lunch', 'chai', 'maggi', 'burger', 'ghewar', 'momos', 'breakfast', 'chips'] },
@@ -178,7 +179,6 @@ function parseJulyData(text) {
     line = line.trim();
     if (!line) continue;
 
-    // Check for date header like "1 july", "15july", "30 july"
     const dateMatch = line.match(/^(\d{1,2})\s*july/i);
     if (dateMatch) {
       const day = dateMatch[1].padStart(2, '0');
@@ -186,23 +186,18 @@ function parseJulyData(text) {
       continue;
     }
 
-    // Extract amount from line
-    // e.g. "Poha 75", "495 pizza", "zepto 152(towel milk yogurt)", "Jeans 1199 - payment done"
     let amount = 0;
     let desc = line;
 
-    // Pattern 1: Starts with number e.g. "495 pizza"
     const startNum = line.match(/^(\d+(?:\.\d+)?)\s+(.*)/);
     if (startNum) {
       amount = parseFloat(startNum[1]);
       desc = startNum[2];
     } else {
-      // Pattern 2: Contains number inside or at end e.g. "Poha 75", "zepto 152(...)"
       const numMatch = line.match(/(\d+(?:\.\d+)?)/);
       if (numMatch) {
         amount = parseFloat(numMatch[1]);
         desc = line.replace(numMatch[0], '').trim();
-        // Clean up remaining brackets or notes if needed
         desc = desc.replace(/^[\s\-\:]+/, '').replace(/[\s\-\:]+$/, '').trim();
         if (!desc) desc = line;
       }
@@ -226,5 +221,29 @@ function parseJulyData(text) {
   return items;
 }
 
-const parsedItems = parseJulyData(rawInput);
-console.log(JSON.stringify(parsedItems, null, 2));
+async function uploadToCloud() {
+  const items = parseJulyData(rawInput);
+  console.log(`Parsed ${items.length} July expense records.`);
+  console.log('Uploading directly to Cloud Database...');
+
+  try {
+    const res = await fetch(CLOUD_ENDPOINT, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items: items,
+        lastUpdated: new Date().toISOString()
+      })
+    });
+
+    if (res.ok) {
+      console.log('✅ Successfully uploaded 94 July expenses to Cloud Database!');
+    } else {
+      console.error('❌ Failed to upload to Cloud Database:', res.statusText);
+    }
+  } catch (err) {
+    console.error('Error during upload:', err);
+  }
+}
+
+uploadToCloud();
