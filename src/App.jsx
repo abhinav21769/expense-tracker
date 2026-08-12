@@ -6,6 +6,7 @@ import AnalyticsDashboard from './components/AnalyticsDashboard';
 import iOSInstallModal from './components/iOSInstallModal';
 import CategoryManagerModal from './components/CategoryManagerModal';
 import ExportImportModal from './components/ExportImportModal';
+import CloudSyncModal from './components/CloudSyncModal';
 import BottomNav from './components/BottomNav';
 import PullToRefresh from './components/PullToRefresh';
 
@@ -18,6 +19,7 @@ import {
   loadTheme, 
   saveTheme 
 } from './utils/storage';
+import { syncDevices, pushExpensesToCloud } from './utils/cloudSync';
 
 export default function App() {
   const [expenses, setExpenses] = useState(() => loadExpenses());
@@ -33,14 +35,17 @@ export default function App() {
   const [isiOSModalOpen, setIsiOSModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isCloudSyncModalOpen, setIsCloudSyncModalOpen] = useState(false);
+
+  // Cloud Sync state
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState(null);
 
   // Toast message
   const [toastMessage, setToastMessage] = useState('');
 
-  // Combined categories list (Default + Custom)
   const categories = [...DEFAULT_CATEGORIES, ...customCategories];
 
-  // Apply Theme class to document root
   useEffect(() => {
     if (theme === 'light') {
       document.documentElement.classList.add('light-mode');
@@ -50,29 +55,57 @@ export default function App() {
     saveTheme(theme);
   }, [theme]);
 
-  // Persist expenses on change
+  // Initial Cloud Sync on App Mount & Periodic 10s Background Auto-Sync
+  useEffect(() => {
+    handleCloudSync();
+
+    const interval = setInterval(() => {
+      handleCloudSync(true); // silent background sync
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     saveExpenses(expenses);
   }, [expenses]);
 
-  // Persist custom categories on change
   useEffect(() => {
     saveCustomCategories(customCategories);
   }, [customCategories]);
 
-  // Show temporary toast notification
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 3500);
   };
 
-  // Toggle Theme
   const toggleTheme = () => {
     setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
   };
 
+  // Perform Cloud Database Synchronization
+  const handleCloudSync = async (silent = false) => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+
+    try {
+      const currentLocal = loadExpenses();
+      const synced = await syncDevices(currentLocal);
+      if (synced && Array.isArray(synced)) {
+        setExpenses(synced);
+        saveExpenses(synced);
+        setLastSyncedAt(new Date());
+        if (!silent) showToast('Cloud database synchronized');
+      }
+    } catch (err) {
+      console.error('Cloud Sync failed:', err);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   // Add Expense handler
-  const handleAddExpense = (parsedResult, originalPrompt) => {
+  const handleAddExpense = async (parsedResult, originalPrompt) => {
     const newExpense = {
       id: `exp-${Date.now()}`,
       description: parsedResult.description,
@@ -84,56 +117,62 @@ export default function App() {
       createdAt: new Date().toISOString()
     };
 
-    setExpenses(prev => [newExpense, ...prev]);
-    showToast(`Added: ${parsedResult.description} ($${parsedResult.amount.toFixed(2)})`);
+    const updated = [newExpense, ...expenses];
+    setExpenses(updated);
+    saveExpenses(updated);
+    showToast(`Added: ${parsedResult.description} (₹${parsedResult.amount.toFixed(2)})`);
+
+    // Push immediately to Cloud Database
+    await pushExpensesToCloud(updated);
   };
 
   // Delete Expense handler
-  const handleDeleteExpense = (id) => {
-    setExpenses(prev => prev.filter(e => e.id !== id));
+  const handleDeleteExpense = async (id) => {
+    const updated = expenses.filter(e => e.id !== id);
+    setExpenses(updated);
+    saveExpenses(updated);
     showToast('Transaction deleted');
+    await pushExpensesToCloud(updated);
   };
 
   // Update Expense handler
-  const handleUpdateExpense = (id, updatedFields) => {
-    setExpenses(prev => prev.map(e => (e.id === id ? { ...e, ...updatedFields } : e)));
+  const handleUpdateExpense = async (id, updatedFields) => {
+    const updated = expenses.map(e => (e.id === id ? { ...e, ...updatedFields } : e));
+    setExpenses(updated);
+    saveExpenses(updated);
     showToast('Transaction updated');
+    await pushExpensesToCloud(updated);
   };
 
-  // Custom Category Add
   const handleAddCategory = (newCat) => {
     setCustomCategories(prev => [...prev, newCat]);
     showToast(`Category "${newCat.name}" created`);
   };
 
-  // Custom Category Delete
   const handleDeleteCategory = (id) => {
     setCustomCategories(prev => prev.filter(c => c.id !== id));
     showToast('Category deleted');
   };
 
-  // Import Data
-  const handleImportData = (importedItems) => {
+  const handleImportData = async (importedItems) => {
     setExpenses(importedItems);
+    saveExpenses(importedItems);
     showToast(`Restored ${importedItems.length} transactions`);
+    await pushExpensesToCloud(importedItems);
   };
 
-  // Clear All Data
-  const handleClearAllData = () => {
+  const handleClearAllData = async () => {
     setExpenses([]);
+    saveExpenses([]);
     showToast('All expense records cleared');
+    await pushExpensesToCloud([]);
   };
 
-  // Pull to refresh handler
   const handleRefresh = async () => {
-    const fresh = loadExpenses();
-    setExpenses(fresh);
-    showToast('Refreshed expense feed');
+    await handleCloudSync();
   };
 
-  // Filter Expenses by Search Query & Date Filter
   const filteredExpenses = expenses.filter(item => {
-    // 1. Search Query Filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchDesc = item.description.toLowerCase().includes(q);
@@ -144,7 +183,6 @@ export default function App() {
       if (!matchDesc && !matchPrompt && !matchCat) return false;
     }
 
-    // 2. Date Filter
     if (dateFilter !== 'all') {
       const todayStr = new Date().toISOString().split('T')[0];
       const itemDateStr = item.date;
@@ -202,6 +240,8 @@ export default function App() {
           onOpeniOSModal={() => setIsiOSModalOpen(true)}
           onOpenExportModal={() => setIsExportModalOpen(true)}
           onOpenCategoryModal={() => setIsCategoryModalOpen(true)}
+          onOpenCloudSyncModal={() => setIsCloudSyncModalOpen(true)}
+          isSyncing={isSyncing}
         />
 
         {/* Main Container */}
@@ -254,6 +294,15 @@ export default function App() {
           )}
 
         </main>
+
+        {/* Cloud Sync Modal */}
+        <CloudSyncModal
+          isOpen={isCloudSyncModalOpen}
+          onClose={() => setIsCloudSyncModalOpen(false)}
+          onManualSync={handleCloudSync}
+          isSyncing={isSyncing}
+          lastSyncedAt={lastSyncedAt}
+        />
 
         {/* iOS App Add to Home Screen Modal */}
         <iOSInstallModal

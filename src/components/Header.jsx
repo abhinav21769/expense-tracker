@@ -7,7 +7,9 @@ import {
   Search, 
   Download, 
   PlusCircle, 
-  Wallet
+  Wallet,
+  Cloud,
+  CloudLightning
 } from 'lucide-react';
 
 export default function Header({
@@ -19,7 +21,9 @@ export default function Header({
   setDateFilter,
   onOpeniOSModal,
   onOpenExportModal,
-  onOpenCategoryModal
+  onOpenCategoryModal,
+  onOpenCloudSyncModal,
+  isSyncing
 }) {
   return (
     <header className="sticky top-0 z-40 backdrop-blur-xl bg-slate-950/80 light-mode:bg-white/80 border-b border-slate-800/80 light-mode:border-slate-200 transition-colors">
@@ -47,6 +51,21 @@ export default function Header({
 
           <div className="flex items-center gap-2">
             
+            {/* Cloud Sync Button */}
+            <button
+              onClick={onOpenCloudSyncModal}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all active:scale-95 ${
+                isSyncing
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                  : 'bg-emerald-500/15 text-emerald-400 light-mode:text-emerald-700 border-emerald-500/30 hover:bg-emerald-500/25'
+              }`}
+              title="Cloud Sync (Mobile ↔ Laptop)"
+            >
+              <CloudLightning className={`w-4 h-4 ${isSyncing ? 'animate-pulse text-amber-400' : 'text-emerald-400'}`} />
+              <span className="hidden sm:inline">{isSyncing ? 'Syncing...' : 'Cloud Sync'}</span>
+            </button>
+
+            {/* iOS Add to Home Screen Button */}
             <button
               onClick={onOpeniOSModal}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-gradient-to-r from-indigo-500/15 to-purple-500/15 hover:from-indigo-500/25 hover:to-purple-500/25 text-indigo-300 light-mode:text-indigo-700 border border-indigo-500/20 active:scale-95"
@@ -56,6 +75,7 @@ export default function Header({
               <span className="hidden sm:inline">iOS App</span>
             </button>
 
+            {/* Custom Category Manager */}
             <button
               onClick={onOpenCategoryModal}
               className="p-2 rounded-xl bg-slate-900 light-mode:bg-slate-100 text-slate-300 light-mode:text-slate-700 border border-slate-800 light-mode:border-slate-200 hover:bg-slate-800 light-mode:hover:bg-slate-200 active:scale-95"
@@ -64,6 +84,7 @@ export default function Header({
               <PlusCircle className="w-4.5 h-4.5" />
             </button>
 
+            {/* Export/Import Data */}
             <button
               onClick={onOpenExportModal}
               className="p-2 rounded-xl bg-slate-900 light-mode:bg-slate-100 text-slate-300 light-mode:text-slate-700 border border-slate-800 light-mode:border-slate-200 hover:bg-slate-800 light-mode:hover:bg-slate-200 active:scale-95"
@@ -72,6 +93,7 @@ export default function Header({
               <Download className="w-4.5 h-4.5" />
             </button>
 
+            {/* Dark/Light Theme Toggle */}
             <button
               onClick={toggleTheme}
               className="p-2 rounded-xl bg-slate-900 light-mode:bg-slate-100 text-slate-300 light-mode:text-slate-700 border border-slate-800 light-mode:border-slate-200 hover:bg-slate-800 light-mode:hover:bg-slate-200 active:scale-95"
