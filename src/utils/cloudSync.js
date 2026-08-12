@@ -1,7 +1,7 @@
 // Real-time Cloud Sync Engine (Cross-device Mobile <-> Laptop Sync)
 
 const SYNC_CODE_KEY = 'smart_expense_tracker_sync_code_v1';
-const CLOUD_ENDPOINT = 'https://crudcrud.com/api/8c642e80b2bb4d5d81d9422d87c86686/expenses/6a7cda0e88d77103e82653fb';
+const CLOUD_ENDPOINT = 'https://crudcrud.com/api/9a6d54bf50854b869d7b5709fcf39269/data/6a7cdcae88d77103e82653fc';
 
 export function getSyncCode() {
   return localStorage.getItem(SYNC_CODE_KEY) || 'ABHINAV-EXPENSES';
