@@ -7,6 +7,7 @@ import iOSInstallModal from './components/iOSInstallModal';
 import CategoryManagerModal from './components/CategoryManagerModal';
 import ExportImportModal from './components/ExportImportModal';
 import BottomNav from './components/BottomNav';
+import PullToRefresh from './components/PullToRefresh';
 
 import { DEFAULT_CATEGORIES } from './utils/categories';
 import { 
@@ -123,6 +124,13 @@ export default function App() {
     showToast('All expense records cleared');
   };
 
+  // Pull to refresh handler
+  const handleRefresh = async () => {
+    const fresh = loadExpenses();
+    setExpenses(fresh);
+    showToast('Refreshed expense feed');
+  };
+
   // Filter Expenses by Search Query & Date Filter
   const filteredExpenses = expenses.filter(item => {
     // 1. Search Query Filter
@@ -173,111 +181,113 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 light-mode:bg-slate-100 text-slate-100 light-mode:text-slate-900 pb-20 sm:pb-12 transition-colors">
-      
-      {/* Toast Notification Popup */}
-      {toastMessage && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-2xl bg-indigo-600 text-white font-semibold text-xs shadow-2xl animate-slide-up flex items-center gap-2">
-          <span>{toastMessage}</span>
-        </div>
-      )}
-
-      {/* Navigation Header */}
-      <Header
-        theme={theme}
-        toggleTheme={toggleTheme}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        dateFilter={dateFilter}
-        setDateFilter={setDateFilter}
-        onOpeniOSModal={() => setIsiOSModalOpen(true)}
-        onOpenExportModal={() => setIsExportModalOpen(true)}
-        onOpenCategoryModal={() => setIsCategoryModalOpen(true)}
-      />
-
-      {/* Main Container */}
-      <main className="max-w-5xl mx-auto px-4 py-6 sm:px-6">
+    <PullToRefresh onRefresh={handleRefresh}>
+      <div className="min-h-screen bg-slate-950 light-mode:bg-slate-100 text-slate-100 light-mode:text-slate-900 pb-20 sm:pb-12 transition-colors">
         
-        {/* Natural Language Prompt Input Bar */}
-        <PromptBar
-          onAddExpense={handleAddExpense}
-          customCategories={customCategories}
-        />
-
-        {/* Tab Selector (Feed vs Analytics) for Desktop */}
-        <div className="flex items-center gap-2 mb-6 border-b border-slate-800 light-mode:border-slate-200 pb-3">
-          <button
-            onClick={() => setActiveTab('feed')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'feed'
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'bg-slate-900 light-mode:bg-white text-slate-400 light-mode:text-slate-600 border border-slate-800 light-mode:border-slate-300'
-            }`}
-          >
-            Expenses Feed ({filteredExpenses.length})
-          </button>
-
-          <button
-            onClick={() => setActiveTab('analytics')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'analytics'
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'bg-slate-900 light-mode:bg-white text-slate-400 light-mode:text-slate-600 border border-slate-800 light-mode:border-slate-300'
-            }`}
-          >
-            Analytics & Charts
-          </button>
-        </div>
-
-        {/* Active Tab View */}
-        {activeTab === 'feed' ? (
-          <ExpenseFeed
-            expenses={filteredExpenses}
-            categories={categories}
-            onDeleteExpense={handleDeleteExpense}
-            onUpdateExpense={handleUpdateExpense}
-          />
-        ) : (
-          <AnalyticsDashboard
-            expenses={filteredExpenses}
-            categories={categories}
-          />
+        {/* Toast Notification Popup */}
+        {toastMessage && (
+          <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-2xl bg-indigo-600 text-white font-semibold text-xs shadow-2xl animate-slide-up flex items-center gap-2">
+            <span>{toastMessage}</span>
+          </div>
         )}
 
-      </main>
+        {/* Navigation Header */}
+        <Header
+          theme={theme}
+          toggleTheme={toggleTheme}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          dateFilter={dateFilter}
+          setDateFilter={setDateFilter}
+          onOpeniOSModal={() => setIsiOSModalOpen(true)}
+          onOpenExportModal={() => setIsExportModalOpen(true)}
+          onOpenCategoryModal={() => setIsCategoryModalOpen(true)}
+        />
 
-      {/* iOS App Add to Home Screen Modal */}
-      <iOSInstallModal
-        isOpen={isiOSModalOpen}
-        onClose={() => setIsiOSModalOpen(false)}
-      />
+        {/* Main Container */}
+        <main className="max-w-5xl mx-auto px-4 py-6 sm:px-6">
+          
+          {/* Natural Language Prompt Input Bar */}
+          <PromptBar
+            onAddExpense={handleAddExpense}
+            customCategories={customCategories}
+          />
 
-      {/* Custom Category Manager Modal */}
-      <CategoryManagerModal
-        isOpen={isCategoryModalOpen}
-        onClose={() => setIsCategoryModalOpen(false)}
-        categories={categories}
-        onAddCategory={handleAddCategory}
-        onDeleteCategory={handleDeleteCategory}
-      />
+          {/* Tab Selector (Feed vs Analytics) for Desktop */}
+          <div className="flex items-center gap-2 mb-6 border-b border-slate-800 light-mode:border-slate-200 pb-3">
+            <button
+              onClick={() => setActiveTab('feed')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                activeTab === 'feed'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'bg-slate-900 light-mode:bg-white text-slate-400 light-mode:text-slate-600 border border-slate-800 light-mode:border-slate-300'
+              }`}
+            >
+              Expenses Feed ({filteredExpenses.length})
+            </button>
 
-      {/* Export / Import Data Modal */}
-      <ExportImportModal
-        isOpen={isExportModalOpen}
-        onClose={() => setIsExportModalOpen(false)}
-        expenses={expenses}
-        categories={categories}
-        onImportData={handleImportData}
-        onClearAllData={handleClearAllData}
-      />
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                activeTab === 'analytics'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'bg-slate-900 light-mode:bg-white text-slate-400 light-mode:text-slate-600 border border-slate-800 light-mode:border-slate-300'
+              }`}
+            >
+              Analytics & Charts
+            </button>
+          </div>
 
-      {/* Mobile iOS Bottom Navigation Toolbar */}
-      <BottomNav
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        onFocusPrompt={handleFocusPrompt}
-      />
+          {/* Active Tab View */}
+          {activeTab === 'feed' ? (
+            <ExpenseFeed
+              expenses={filteredExpenses}
+              categories={categories}
+              onDeleteExpense={handleDeleteExpense}
+              onUpdateExpense={handleUpdateExpense}
+            />
+          ) : (
+            <AnalyticsDashboard
+              expenses={filteredExpenses}
+              categories={categories}
+            />
+          )}
 
-    </div>
+        </main>
+
+        {/* iOS App Add to Home Screen Modal */}
+        <iOSInstallModal
+          isOpen={isiOSModalOpen}
+          onClose={() => setIsiOSModalOpen(false)}
+        />
+
+        {/* Custom Category Manager Modal */}
+        <CategoryManagerModal
+          isOpen={isCategoryModalOpen}
+          onClose={() => setIsCategoryModalOpen(false)}
+          categories={categories}
+          onAddCategory={handleAddCategory}
+          onDeleteCategory={handleDeleteCategory}
+        />
+
+        {/* Export / Import Data Modal */}
+        <ExportImportModal
+          isOpen={isExportModalOpen}
+          onClose={() => setIsExportModalOpen(false)}
+          expenses={expenses}
+          categories={categories}
+          onImportData={handleImportData}
+          onClearAllData={handleClearAllData}
+        />
+
+        {/* Mobile iOS Bottom Navigation Toolbar */}
+        <BottomNav
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          onFocusPrompt={handleFocusPrompt}
+        />
+
+      </div>
+    </PullToRefresh>
   );
 }
