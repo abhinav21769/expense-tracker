@@ -8,8 +8,8 @@ import {
   Download, 
   PlusCircle, 
   Wallet,
-  Cloud,
-  CloudLightning
+  CloudLightning,
+  Calendar
 } from 'lucide-react';
 
 export default function Header({
@@ -19,6 +19,9 @@ export default function Header({
   setSearchQuery,
   dateFilter,
   setDateFilter,
+  selectedMonth,
+  setSelectedMonth,
+  availableMonths,
   onOpeniOSModal,
   onOpenExportModal,
   onOpenCategoryModal,
@@ -75,7 +78,6 @@ export default function Header({
               <span className="hidden sm:inline">iOS App</span>
             </button>
 
-            {/* Custom Category Manager */}
             <button
               onClick={onOpenCategoryModal}
               className="p-2 rounded-xl bg-slate-900 light-mode:bg-slate-100 text-slate-300 light-mode:text-slate-700 border border-slate-800 light-mode:border-slate-200 hover:bg-slate-800 light-mode:hover:bg-slate-200 active:scale-95"
@@ -84,7 +86,6 @@ export default function Header({
               <PlusCircle className="w-4.5 h-4.5" />
             </button>
 
-            {/* Export/Import Data */}
             <button
               onClick={onOpenExportModal}
               className="p-2 rounded-xl bg-slate-900 light-mode:bg-slate-100 text-slate-300 light-mode:text-slate-700 border border-slate-800 light-mode:border-slate-200 hover:bg-slate-800 light-mode:hover:bg-slate-200 active:scale-95"
@@ -93,7 +94,6 @@ export default function Header({
               <Download className="w-4.5 h-4.5" />
             </button>
 
-            {/* Dark/Light Theme Toggle */}
             <button
               onClick={toggleTheme}
               className="p-2 rounded-xl bg-slate-900 light-mode:bg-slate-100 text-slate-300 light-mode:text-slate-700 border border-slate-800 light-mode:border-slate-200 hover:bg-slate-800 light-mode:hover:bg-slate-200 active:scale-95"
@@ -104,6 +104,7 @@ export default function Header({
           </div>
         </div>
 
+        {/* Search & Month Filter Toolbar */}
         <div className="mt-3 flex flex-wrap items-center gap-2 pt-2 border-t border-slate-800/40 light-mode:border-slate-200/60">
           
           <div className="relative flex-1 min-w-[180px]">
@@ -125,25 +126,23 @@ export default function Header({
             )}
           </div>
 
-          <div className="flex items-center gap-1 bg-slate-900/90 light-mode:bg-slate-100 p-1 rounded-xl border border-slate-800 light-mode:border-slate-300 text-xs">
-            {[
-              { id: 'all', label: 'All' },
-              { id: 'today', label: 'Today' },
-              { id: 'week', label: 'This Week' },
-              { id: 'month', label: 'This Month' }
-            ].map(filter => (
-              <button
-                key={filter.id}
-                onClick={() => setDateFilter(filter.id)}
-                className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
-                  dateFilter === filter.id
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200 light-mode:text-slate-600 light-mode:hover:text-slate-900'
-                }`}
-              >
-                {filter.label}
-              </button>
-            ))}
+          {/* Month Dropdown Selector */}
+          <div className="flex items-center gap-1.5 bg-slate-900/90 light-mode:bg-slate-100 p-1 rounded-xl border border-slate-800 light-mode:border-slate-300 text-xs">
+            <Calendar className="w-3.5 h-3.5 text-indigo-400 ml-1.5" />
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="bg-transparent text-slate-100 light-mode:text-slate-900 font-semibold focus:outline-none text-xs pr-1 cursor-pointer"
+            >
+              <option value="all" className="bg-slate-900 light-mode:bg-white text-slate-100 light-mode:text-slate-900">
+                All Months
+              </option>
+              {availableMonths.map(m => (
+                <option key={m.value} value={m.value} className="bg-slate-900 light-mode:bg-white text-slate-100 light-mode:text-slate-900">
+                  {m.label}
+                </option>
+              ))}
+            </select>
           </div>
 
         </div>

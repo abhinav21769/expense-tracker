@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Header from './components/Header';
 import PromptBar from './components/PromptBar';
 import ExpenseFeed from './components/ExpenseFeed';
@@ -28,8 +28,9 @@ export default function App() {
   
   // UI Filters & Tabs
   const [searchQuery, setSearchQuery] = useState('');
-  const [dateFilter, setDateFilter] = useState('all'); // 'all', 'today', 'week', 'month'
-  const [activeTab, setActiveTab] = useState('feed'); // 'feed' | 'analytics'
+  const [dateFilter, setDateFilter] = useState('all');
+  const [selectedMonth, setSelectedMonth] = useState('all'); // 'all' | '2026-07' | '2026-08'
+  const [activeTab, setActiveTab] = useState('feed');
 
   // Modals
   const [isiOSModalOpen, setIsiOSModalOpen] = useState(false);
@@ -46,6 +47,23 @@ export default function App() {
 
   const categories = [...DEFAULT_CATEGORIES, ...customCategories];
 
+  // Dynamically calculate available months from expense dataset
+  const availableMonths = useMemo(() => {
+    const monthMap = new Map();
+    for (const item of expenses) {
+      if (item.date && item.date.length >= 7) {
+        const yearMonth = item.date.substring(0, 7);
+        if (!monthMap.has(yearMonth)) {
+          const [yr, mo] = yearMonth.split('-');
+          const dateObj = new Date(parseInt(yr, 10), parseInt(mo, 10) - 1, 1);
+          const label = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+          monthMap.set(yearMonth, { value: yearMonth, label });
+        }
+      }
+    }
+    return Array.from(monthMap.values()).sort((a, b) => b.value.localeCompare(a.value));
+  }, [expenses]);
+
   useEffect(() => {
     if (theme === 'light') {
       document.documentElement.classList.add('light-mode');
@@ -60,7 +78,7 @@ export default function App() {
     handleCloudSync();
 
     const interval = setInterval(() => {
-      handleCloudSync(true); // silent background sync
+      handleCloudSync(true);
     }, 10000);
 
     return () => clearInterval(interval);
@@ -83,7 +101,6 @@ export default function App() {
     setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
   };
 
-  // Perform Cloud Database Synchronization
   const handleCloudSync = async (silent = false) => {
     if (isSyncing) return;
     setIsSyncing(true);
@@ -104,7 +121,6 @@ export default function App() {
     }
   };
 
-  // Add Expense handler
   const handleAddExpense = async (parsedResult, originalPrompt) => {
     const newExpense = {
       id: `exp-${Date.now()}`,
@@ -121,12 +137,9 @@ export default function App() {
     setExpenses(updated);
     saveExpenses(updated);
     showToast(`Added: ${parsedResult.description} (₹${parsedResult.amount.toFixed(2)})`);
-
-    // Push immediately to Cloud Database
     await pushExpensesToCloud(updated);
   };
 
-  // Delete Expense handler
   const handleDeleteExpense = async (id) => {
     const updated = expenses.filter(e => e.id !== id);
     setExpenses(updated);
@@ -135,7 +148,6 @@ export default function App() {
     await pushExpensesToCloud(updated);
   };
 
-  // Update Expense handler
   const handleUpdateExpense = async (id, updatedFields) => {
     const updated = expenses.map(e => (e.id === id ? { ...e, ...updatedFields } : e));
     setExpenses(updated);
@@ -172,7 +184,9 @@ export default function App() {
     await handleCloudSync();
   };
 
+  // Filter Expenses by Search Query & Selected Month
   const filteredExpenses = expenses.filter(item => {
+    // 1. Search Query Filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchDesc = item.description.toLowerCase().includes(q);
@@ -183,27 +197,10 @@ export default function App() {
       if (!matchDesc && !matchPrompt && !matchCat) return false;
     }
 
-    if (dateFilter !== 'all') {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const itemDateStr = item.date;
-
-      if (dateFilter === 'today') {
-        return itemDateStr === todayStr;
-      }
-
-      if (dateFilter === 'week') {
-        const itemDate = new Date(itemDateStr);
-        const now = new Date();
-        const diffTime = Math.abs(now - itemDate);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays <= 7;
-      }
-
-      if (dateFilter === 'month') {
-        const itemDate = new Date(itemDateStr);
-        const now = new Date();
-        return itemDate.getMonth() === now.getMonth() && itemDate.getFullYear() === now.getFullYear();
-      }
+    // 2. Month Selector Filter
+    if (selectedMonth !== 'all') {
+      const itemMonth = item.date ? item.date.substring(0, 7) : '';
+      if (itemMonth !== selectedMonth) return false;
     }
 
     return true;
@@ -237,6 +234,9 @@ export default function App() {
           setSearchQuery={setSearchQuery}
           dateFilter={dateFilter}
           setDateFilter={setDateFilter}
+          selectedMonth={selectedMonth}
+          setSelectedMonth={setSelectedMonth}
+          availableMonths={availableMonths}
           onOpeniOSModal={() => setIsiOSModalOpen(true)}
           onOpenExportModal={() => setIsExportModalOpen(true)}
           onOpenCategoryModal={() => setIsCategoryModalOpen(true)}
@@ -288,8 +288,11 @@ export default function App() {
             />
           ) : (
             <AnalyticsDashboard
-              expenses={filteredExpenses}
+              expenses={expenses}
               categories={categories}
+              selectedMonth={selectedMonth}
+              setSelectedMonth={setSelectedMonth}
+              availableMonths={availableMonths}
             />
           )}
 
