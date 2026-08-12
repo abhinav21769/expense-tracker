@@ -1,7 +1,7 @@
-// Real-time Cloud Sync Engine (Silent Error Guarded)
+// Zero-CORS Silent Cloud Sync Engine
 
 const SYNC_CODE_KEY = 'smart_expense_tracker_sync_code_v1';
-const CLOUD_ENDPOINT = 'https://crudcrud.com/api/9a6d54bf50854b869d7b5709fcf39269/data/6a7cdcae88d77103e82653fc';
+const CLOUD_ENDPOINT = '/api/sync';
 
 export function getSyncCode() {
   return localStorage.getItem(SYNC_CODE_KEY) || 'ABHINAV-EXPENSES';
@@ -19,7 +19,7 @@ export function setSyncCode(code) {
 export async function pushExpensesToCloud(expenses) {
   try {
     const res = await fetch(CLOUD_ENDPOINT, {
-      method: 'PUT',
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
