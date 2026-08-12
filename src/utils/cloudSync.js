@@ -1,4 +1,4 @@
-// Real-time Cloud Sync Engine (Cross-device Mobile <-> Laptop Sync)
+// Real-time Cloud Sync Engine (Silent Error Guarded)
 
 const SYNC_CODE_KEY = 'smart_expense_tracker_sync_code_v1';
 const CLOUD_ENDPOINT = 'https://crudcrud.com/api/9a6d54bf50854b869d7b5709fcf39269/data/6a7cdcae88d77103e82653fc';
@@ -14,7 +14,7 @@ export function setSyncCode(code) {
 }
 
 /**
- * Push local expenses array to Cloud Database
+ * Push local expenses array to Cloud Database (silent failover guarded)
  */
 export async function pushExpensesToCloud(expenses) {
   try {
@@ -27,25 +27,24 @@ export async function pushExpensesToCloud(expenses) {
         items: expenses,
         lastUpdated: new Date().toISOString()
       })
-    });
-    return res.ok;
+    }).catch(() => null);
+
+    return !!(res && res.ok);
   } catch (err) {
-    console.error('Cloud Push Error:', err);
     return false;
   }
 }
 
 /**
- * Pull expenses array from Cloud Database
+ * Pull expenses array from Cloud Database (silent failover guarded)
  */
 export async function pullExpensesFromCloud() {
   try {
-    const res = await fetch(CLOUD_ENDPOINT);
-    if (!res.ok) return null;
-    const json = await res.json();
+    const res = await fetch(CLOUD_ENDPOINT).catch(() => null);
+    if (!res || !res.ok) return null;
+    const json = await res.json().catch(() => null);
     return json?.items || null;
   } catch (err) {
-    console.error('Cloud Pull Error:', err);
     return null;
   }
 }
@@ -56,7 +55,7 @@ export async function pullExpensesFromCloud() {
 export async function syncDevices(localExpenses = []) {
   try {
     const cloudExpenses = await pullExpensesFromCloud();
-    if (!cloudExpenses || !Array.isArray(cloudExpenses)) {
+    if (!cloudExpenses || !Array.isArray(cloudExpenses) || cloudExpenses.length === 0) {
       await pushExpensesToCloud(localExpenses);
       return localExpenses;
     }
@@ -76,7 +75,6 @@ export async function syncDevices(localExpenses = []) {
     await pushExpensesToCloud(merged);
     return merged;
   } catch (err) {
-    console.error('Sync Devices Error:', err);
     return localExpenses;
   }
 }

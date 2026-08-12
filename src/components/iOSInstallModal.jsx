@@ -1,7 +1,7 @@
 import React from 'react';
-import { Smartphone, Share, PlusSquare, CheckCircle2, X } from 'lucide-react';
+import { Smartphone, Share, PlusSquare, X } from 'lucide-react';
 
-export default function iOSInstallModal({ isOpen, onClose }) {
+export default function IosInstallModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   return (

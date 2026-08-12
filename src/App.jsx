@@ -3,7 +3,7 @@ import Header from './components/Header';
 import PromptBar from './components/PromptBar';
 import ExpenseFeed from './components/ExpenseFeed';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
-import iOSInstallModal from './components/iOSInstallModal';
+import IosInstallModal from './components/IosInstallModal';
 import CategoryManagerModal from './components/CategoryManagerModal';
 import ExportImportModal from './components/ExportImportModal';
 import CloudSyncModal from './components/CloudSyncModal';
@@ -29,7 +29,7 @@ export default function App() {
   // UI Filters & Tabs
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('all');
-  const [selectedMonth, setSelectedMonth] = useState('all'); // 'all' | '2026-07' | '2026-08'
+  const [selectedMonth, setSelectedMonth] = useState('all');
   const [activeTab, setActiveTab] = useState('feed');
 
   // Modals
@@ -47,7 +47,6 @@ export default function App() {
 
   const categories = [...DEFAULT_CATEGORIES, ...customCategories];
 
-  // Dynamically calculate available months from expense dataset
   const availableMonths = useMemo(() => {
     const monthMap = new Map();
     for (const item of expenses) {
@@ -73,13 +72,12 @@ export default function App() {
     saveTheme(theme);
   }, [theme]);
 
-  // Initial Cloud Sync on App Mount & Periodic 10s Background Auto-Sync
   useEffect(() => {
     handleCloudSync();
 
     const interval = setInterval(() => {
       handleCloudSync(true);
-    }, 10000);
+    }, 15000);
 
     return () => clearInterval(interval);
   }, []);
@@ -108,7 +106,7 @@ export default function App() {
     try {
       const currentLocal = loadExpenses();
       const synced = await syncDevices(currentLocal);
-      if (synced && Array.isArray(synced)) {
+      if (synced && Array.isArray(synced) && synced.length > 0) {
         setExpenses(synced);
         saveExpenses(synced);
         setLastSyncedAt(new Date());
@@ -184,9 +182,7 @@ export default function App() {
     await handleCloudSync();
   };
 
-  // Filter Expenses by Search Query & Selected Month
   const filteredExpenses = expenses.filter(item => {
-    // 1. Search Query Filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchDesc = item.description.toLowerCase().includes(q);
@@ -197,7 +193,6 @@ export default function App() {
       if (!matchDesc && !matchPrompt && !matchCat) return false;
     }
 
-    // 2. Month Selector Filter
     if (selectedMonth !== 'all') {
       const itemMonth = item.date ? item.date.substring(0, 7) : '';
       if (itemMonth !== selectedMonth) return false;
@@ -308,7 +303,7 @@ export default function App() {
         />
 
         {/* iOS App Add to Home Screen Modal */}
-        <iOSInstallModal
+        <IosInstallModal
           isOpen={isiOSModalOpen}
           onClose={() => setIsiOSModalOpen(false)}
         />
