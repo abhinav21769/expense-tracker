@@ -1,4 +1,4 @@
-// LocalStorage persistence manager with July Expense Seed Data
+// LocalStorage persistence manager with July Expense Dataset auto-loader
 
 const STORAGE_KEY = 'smart_expense_tracker_data_v1';
 const CATEGORIES_KEY = 'smart_expense_tracker_custom_categories_v1';
@@ -12,7 +12,7 @@ export function getTodayDateString(offsetDays = 0) {
   return d.toISOString().split('T')[0];
 }
 
-// Complete 94 parsed July expense records provided by user
+// Complete 94 July expense records
 export const JULY_SEED_DATA = [
   { id: "july-1", description: "Poha", amount: 75, categoryId: "food", date: "2026-07-01", type: "expense", promptUsed: "Poha 75" },
   { id: "july-2", description: "Metro", amount: 41, categoryId: "transport", date: "2026-07-01", type: "expense", promptUsed: "Metro 41" },
@@ -110,14 +110,24 @@ export const JULY_SEED_DATA = [
   { id: "july-94", description: "Subway", amount: 390, categoryId: "food", date: "2026-07-31", type: "expense", promptUsed: "subway 390" }
 ];
 
+/**
+ * Load expenses and automatically ensure July dataset is present even if browser LocalStorage had an older empty state
+ */
 export function loadExpenses() {
   try {
     const data = localStorage.getItem(STORAGE_KEY);
-    if (!data) {
-      saveExpenses(JULY_SEED_DATA);
-      return JULY_SEED_DATA;
+    let expenses = data ? JSON.parse(data) : [];
+
+    // Automatically merge July dataset if missing from browser LocalStorage
+    const hasJulyData = expenses.some(item => item.id && item.id.startsWith('july-'));
+    if (!hasJulyData || expenses.length === 0) {
+      const existingUserItems = expenses.filter(item => item.id && !item.id.startsWith('july-'));
+      const combined = [...JULY_SEED_DATA, ...existingUserItems];
+      saveExpenses(combined);
+      return combined;
     }
-    return JSON.parse(data);
+
+    return expenses;
   } catch (err) {
     return JULY_SEED_DATA;
   }
